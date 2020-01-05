@@ -53,7 +53,7 @@ jobs:
       api_token: $npm_api_key
       on:
         tags: true
-        repo: donmahallem/TrapezeApiClientNode
+        repo: donmahallem/TrapezeApiClientCacheNode
   - stage: github pages release
     node_js: 'stable'
     script: npm run docs
