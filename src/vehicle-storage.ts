@@ -2,13 +2,14 @@
  * Source https://github.com/donmahallem/TrapezeApiClientNode
  */
 
+import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
 import {
     IVehicleLocation,
     IVehicleLocationList,
 } from "@donmahallem/trapeze-api-types";
 import { LockHandler } from "./lock-handler";
 import { NotFoundError } from "./not-found-error";
-import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
+import { VehicleDb } from "./vehicle-db";
 
 export enum Status {
     SUCCESS = 1,
@@ -43,7 +44,17 @@ export class VehicleStorage {
 
     private lock: LockHandler = new LockHandler(false);
     private mStatus: LoadStatus;
-    constructor(private trapezeClient: TrapezeApiClient, private updateDelay: number = 10000) { }
+    private mDb: VehicleDb;
+    constructor(private trapezeClient: TrapezeApiClient, private updateDelay: number = 10000, ttl: number = 0) {
+        this.mDb = new VehicleDb(ttl);
+    }
+
+    /**
+     * Returns the underlying db
+     */
+    public get db(): VehicleDb {
+        return this.mDb;
+    }
 
     public updateRequired(): boolean {
         if (this.status && this.status.timestamp !== undefined) {

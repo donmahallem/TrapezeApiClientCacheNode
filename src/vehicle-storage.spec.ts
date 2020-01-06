@@ -2,12 +2,12 @@
  * Source https://github.com/donmahallem/TrapezeApiClientNode
  */
 
+import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
 import { IVehicleLocation, IVehicleLocationList } from "@donmahallem/trapeze-api-types";
 import { expect } from "chai";
 import "mocha";
 import * as sinon from "sinon";
 import { NotFoundError } from "./not-found-error";
-import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
 import { ISuccessStatus, IVehicleLocationResponse, LoadStatus, Status, VehicleStorage } from "./vehicle-storage";
 
 describe("vehicle-storage.ts", () => {
