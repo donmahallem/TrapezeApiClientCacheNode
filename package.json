@@ -20,7 +20,9 @@
         "test:docs": "npm run docs",
         "prepublishOnly": "npm run build"
     },
-    "dependencies": {},
+    "dependencies": {
+        "@donmahallem/trapeze-api-client": "~3.0.1"
+    },
     "devDependencies": {
         "@types/chai": "~4.2.7",
         "@types/mocha": "~5.2.7",
@@ -40,7 +42,6 @@
     },
     "peerDependencies": {
         "@donmahallem/trapeze-api-types": ">=1.2.0 <3.0.0",
-        "@donmahallem/trapeze-api-client": ">=3.0.0",
         "@donmahallem/trapeze-api-client-types": ">=1.0.0"
     },
     "nyc": {
