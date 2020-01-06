@@ -40,7 +40,8 @@
     },
     "peerDependencies": {
         "@donmahallem/trapeze-api-types": ">=1.2.0 <3.0.0",
-        "@donmahallem/trapeze-api-client": ">=3.0.0"
+        "@donmahallem/trapeze-api-client": ">=3.0.0",
+        "@donmahallem/trapeze-api-client-types": "*"
     },
     "nyc": {
         "include": [

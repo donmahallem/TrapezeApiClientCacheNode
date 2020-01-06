@@ -7,7 +7,7 @@ import { expect } from "chai";
 import "mocha";
 import * as sinon from "sinon";
 import { NotFoundError } from "./not-found-error";
-import { TrapezeApiClient } from "./trapeze-api-client";
+import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
 import { ISuccessStatus, IVehicleLocationResponse, LoadStatus, Status, VehicleStorage } from "./vehicle-storage";
 
 describe("vehicle-storage.ts", () => {

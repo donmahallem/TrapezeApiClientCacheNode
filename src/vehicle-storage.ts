@@ -8,7 +8,7 @@ import {
 } from "@donmahallem/trapeze-api-types";
 import { LockHandler } from "./lock-handler";
 import { NotFoundError } from "./not-found-error";
-import { TrapezeApiClient } from "./trapeze-api-client";
+import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
 
 export enum Status {
     SUCCESS = 1,
