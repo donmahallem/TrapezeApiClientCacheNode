@@ -3,15 +3,15 @@
  */
 
 import {
+    PositionType,
     TrapezeApiClient,
-    PositionType
 } from "@donmahallem/trapeze-api-client";
 import { IVehicleLocationExtended } from "@donmahallem/trapeze-api-client-types";
 import {
     IVehicleLocation,
     IVehicleLocationList,
+    TripId,
     VehicleId,
-    TripId
 } from "@donmahallem/trapeze-api-types";
 import { LockHandler } from "./lock-handler";
 import { NotFoundError } from "./not-found-error";
@@ -90,14 +90,13 @@ export class VehicleStorage {
                     timestamp: Date.now(),
                 };
             })
-            .catch((err: any): IErrorStatus => {
-                return {
+            .catch((err: any): IErrorStatus =>
+                ({
                     error: err,
                     lastUpdate: this.mStatus.lastUpdate,
                     status: Status.ERROR,
-                    timestamp: Date.now()
-                };
-            })
+                    timestamp: Date.now(),
+                }))
             .then((loadStatus: LoadStatus): LoadStatus => {
                 loadStatus.timestamp = Date.now();
                 this.mStatus = loadStatus;
@@ -112,9 +111,10 @@ export class VehicleStorage {
     public getVehicleByTripId(id: TripId): Promise<IVehicleLocationExtended> {
         return this.fetchSuccessOrThrow()
             .then((status: ISuccessStatus): IVehicleLocationExtended => {
-                const loc: IVehicleLocationExtended = this.mDb.getVehicleByTripId(id);
-                if (loc)
+                const loc: IVehicleLocationExtended | undefined = this.mDb.getVehicleByTripId(id);
+                if (loc) {
                     return loc;
+                }
                 throw new NotFoundError("Trip not found");
             });
     }
@@ -143,8 +143,9 @@ export class VehicleStorage {
             .then((status: ISuccessStatus): IVehicleLocationExtended => {
                 const location: IVehicleLocationExtended | undefined = this.mDb
                     .getVehicleById(id);
-                if (location)
+                if (location) {
                     return location;
+                }
                 throw new NotFoundError("Vehicle not found");
             });
     }
@@ -155,8 +156,13 @@ export class VehicleStorage {
      * @param right
      * @param top
      * @param bottom
+     * @param since
      */
-    public getVehicles(left: number, right: number, top: number, bottom: number): Promise<IVehicleLocationList> {
+    public getVehicles(left: number,
+        right: number,
+        top: number,
+        bottom: number,
+        lastUpdate: number = 0): Promise<IVehicleLocationList> {
         if (left >= right) {
             return Promise.reject(new Error("left must be smaller than right"));
         }
@@ -165,21 +171,12 @@ export class VehicleStorage {
         }
         return this.fetchSuccessOrThrow()
             .then((status: ISuccessStatus): IVehicleLocationList => {
-                const vehicleList: IVehicleLocationList = {
+                const vehicles: IVehicleLocationExtended[] = this.mDb
+                    .getVehiclesIn(left, right, top, bottom, lastUpdate);
+                return {
                     lastUpdate: status.lastUpdate,
-                    vehicles: new Array(),
+                    vehicles,
                 };
-                for (const key of Array.from(status.storage.keys())) {
-                    const vehicle: IVehicleLocation = status.storage.get(key) as IVehicleLocation;
-                    if (vehicle.longitude < left || vehicle.longitude > right) {
-                        continue;
-                    } else if (vehicle.latitude > top || vehicle.latitude < bottom) {
-                        continue;
-                    } else {
-                        vehicleList.vehicles.push(vehicle);
-                    }
-                }
-                return vehicleList;
             });
     }
 
