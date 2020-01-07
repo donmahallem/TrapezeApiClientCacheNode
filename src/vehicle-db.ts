@@ -34,7 +34,7 @@ export class VehicleDb {
                         return false;
                     }
                     if (value.isDeleted === true) {
-                        return false;
+                        return true;
                     }
                     if (value.latitude === undefined || value.longitude === undefined) {
                         return false;

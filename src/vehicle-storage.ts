@@ -93,7 +93,7 @@ export class VehicleStorage {
             .catch((err: any): IErrorStatus =>
                 ({
                     error: err,
-                    lastUpdate: this.mStatus.lastUpdate,
+                    lastUpdate: (this.mStatus && this.mStatus.lastUpdate) ? this.mStatus.lastUpdate : 0,
                     status: Status.ERROR,
                     timestamp: Date.now(),
                 }))
@@ -159,10 +159,10 @@ export class VehicleStorage {
      * @param since
      */
     public getVehicles(left: number,
-        right: number,
-        top: number,
-        bottom: number,
-        lastUpdate: number = 0): Promise<IVehicleLocationList> {
+                       right: number,
+                       top: number,
+                       bottom: number,
+                       lastUpdate: number = 0): Promise<IVehicleLocationList> {
         if (left >= right) {
             return Promise.reject(new Error("left must be smaller than right"));
         }

@@ -239,9 +239,12 @@ describe("vehicle-db.ts", () => {
             };
             it("should parse the items correctly", () => {
                 const result: any[] = instance.convertResponse(testData);
-                expect(result.length).to.equal(1);
+                expect(result.length).to.equal(2);
                 expect(result.every((value) => value.lastUpdate === 235236)).to.equal(true);
                 expect(result).to.deep.equal([{
+                    isDeleted: true,
+                    lastUpdate: 235236,
+                }, {
                     id: "testId3",
                     lastUpdate: 235236,
                     latitude: 3,

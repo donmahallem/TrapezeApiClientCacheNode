@@ -3,12 +3,22 @@
  */
 
 import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
-import { IVehicleLocation, IVehicleLocationList } from "@donmahallem/trapeze-api-types";
+import { IVehicleLocationExtended } from "@donmahallem/trapeze-api-client-types";
+import {
+    IVehicleLocationList,
+    VehicleId,
+} from "@donmahallem/trapeze-api-types";
 import { expect } from "chai";
 import "mocha";
 import * as sinon from "sinon";
 import { NotFoundError } from "./not-found-error";
-import { ISuccessStatus, IVehicleLocationResponse, LoadStatus, Status, VehicleStorage } from "./vehicle-storage";
+import { VehicleDb } from "./vehicle-db";
+import {
+    ISuccessStatus,
+    LoadStatus,
+    Status,
+    VehicleStorage,
+} from "./vehicle-storage";
 
 describe("vehicle-storage.ts", () => {
     describe("VehicleStorage", () => {
@@ -18,6 +28,7 @@ describe("vehicle-storage.ts", () => {
         let client: TrapezeApiClient;
         let clock: sinon.SinonFakeTimers;
         const clockNowTimestamp: number = 123456;
+        let vehicleDb: sinon.SinonStubbedInstance<VehicleDb>;
         before("create Sandbox", () => {
             sandbox = sinon.createSandbox();
             getVehicleLocationsStub = sandbox.stub();
@@ -25,12 +36,14 @@ describe("vehicle-storage.ts", () => {
                 now: clockNowTimestamp,
                 shouldAdvanceTime: false,
             });
+            vehicleDb = sandbox.createStubInstance(VehicleDb);
         });
         beforeEach(() => {
             client = {
                 getVehicleLocations: getVehicleLocationsStub,
             } as any;
             instance = new VehicleStorage(client);
+            (instance as any).mDb = vehicleDb;
         });
 
         afterEach("clear history", () => {
@@ -40,57 +53,13 @@ describe("vehicle-storage.ts", () => {
             sandbox.restore();
             clock.restore();
         });
-        describe("convertResponse(result)", () => {
-            const testData: IVehicleLocationList = {
-                lastUpdate: 235236,
-                vehicles: [
-                    undefined,
-                    // tslint:disable-next-line:no-null-keyword
-                    null,
-                    {
-                        isDeleted: true,
-                    },
-                    {
-                        id: "testId1",
-                        tripId: "tripId1",
-                    } as any,
-                    {
-                        id: "testId2",
-                        tripId: "tripId2",
-                    } as any,
-                    {
-                        id: "testId3",
-                        tripId: "tripId3",
-                    } as any,
-                ],
-            };
-            const validItems: IVehicleLocation[] = testData.vehicles
-                .filter((value: any) => (value ? true : false) && value.id ? true : false) as any;
-            const vehicleIds: string[] = validItems.map((value) => value.id);
-            const tripIds: string[] = validItems.map((value: any) => value.tripId);
-            it("should parse the items correctly", () => {
-                const result: LoadStatus = instance.convertResponse(testData);
-                expect(result.timestamp).to.equal(clock.now, "timestamp should equal");
-                expect(result.lastUpdate).to.equal(testData.lastUpdate, "last update should be taken");
-                expect(Array.from(result.storage.keys())).to.deep.equal(vehicleIds);
-                expect(Array.from(result.tripStorage.keys())).to.deep.equal(tripIds);
-                for (const item of validItems) {
-                    expect(result.storage.get(item.id)).to.deep.equal(item);
-                }
-                for (const item of validItems) {
-                    expect(result.tripStorage.get(item.tripId)).to.deep.equal(item);
-                }
-            });
-        });
         describe("getVehicle(id)", () => {
             let fetchSuccessStub: sinon.SinonStub;
             const testError: Error = new Error("Test Error");
             const testData: ISuccessStatus = {
                 lastUpdate: 235236,
                 status: Status.SUCCESS,
-                storage: new Map(Object.entries({ testId: { id: 1, sum: 2 } as any })),
                 timestamp: 993,
-                tripStorage: new Map(),
             };
             beforeEach(() => {
                 fetchSuccessStub = sandbox.stub(instance, "fetchSuccessOrThrow");
@@ -100,37 +69,45 @@ describe("vehicle-storage.ts", () => {
                     fetchSuccessStub.returns(Promise.reject(testError));
                 });
                 it("should pass the error on", () =>
-                    instance.getVehicle("any id")
+                    instance.getVehicle("any id" as VehicleId)
                         .then(() => {
                             throw new Error("should not be called");
                         }, (err: any) => {
                             expect(err).to.deep.equal(testError);
+                            expect(vehicleDb.getVehicleById.callCount).to.equal(0);
                         }));
             });
             describe("an unknown vehicle id is provided", () => {
                 beforeEach(() => {
                     fetchSuccessStub.returns(Promise.resolve(testData));
+                    vehicleDb.getVehicleById.returns(undefined);
                 });
                 it("should throw an NotFoundError", () =>
-                    instance.getVehicle("any id")
+                    instance.getVehicle("any id" as VehicleId)
                         .then(() => {
                             throw new Error("should not be called");
                         }, (err: any | NotFoundError) => {
                             expect(err).to.instanceOf(NotFoundError);
                             expect(err.statusCode).to.equal(404);
+                            expect(vehicleDb.getVehicleById.callCount).to.equal(1);
+                            expect(vehicleDb.getVehicleById.getCall(0).args).to.deep.equal(["any id"]);
                         }));
             });
             describe("an known vehicle id is provided", () => {
+                const testVehicle: any = {
+                    id: "test_id",
+                    lastUpdate: 9823,
+                };
                 beforeEach(() => {
                     fetchSuccessStub.returns(Promise.resolve(testData));
+                    vehicleDb.getVehicleById.returns(testVehicle);
                 });
                 it("should return the id", () =>
-                    instance.getVehicle("testId")
-                        .then((vehicle: IVehicleLocationResponse) => {
-                            expect(vehicle).to.deep.equal({
-                                lastUpdate: testData.lastUpdate,
-                                vehicle: testData.storage.get("testId"),
-                            });
+                    instance.getVehicle("testId" as VehicleId)
+                        .then((vehicle: IVehicleLocationExtended) => {
+                            expect(vehicle).to.deep.equal(testVehicle);
+                            expect(vehicleDb.getVehicleById.callCount).to.equal(1);
+                            expect(vehicleDb.getVehicleById.getCall(0).args).to.deep.equal(["testId"]);
                         }));
             });
         });
@@ -140,9 +117,7 @@ describe("vehicle-storage.ts", () => {
             const testData: ISuccessStatus = {
                 lastUpdate: 235236,
                 status: Status.SUCCESS,
-                storage: new Map(),
                 timestamp: 993,
-                tripStorage: new Map(Object.entries({ testId: { id: 1, sum: 2 } as any })),
             };
             beforeEach(() => {
                 fetchSuccessStub = sandbox.stub(instance, "fetchSuccessOrThrow");
@@ -152,59 +127,55 @@ describe("vehicle-storage.ts", () => {
                     fetchSuccessStub.returns(Promise.reject(testError));
                 });
                 it("should pass the error on", () =>
-                    instance.getVehicleByTripId("any id")
+                    instance.getVehicleByTripId("any id" as VehicleId)
                         .then(() => {
                             throw new Error("should not be called");
                         }, (err: any) => {
                             expect(err).to.deep.equal(testError);
+                            expect(vehicleDb.getVehicleByTripId.callCount).to.equal(0);
                         }));
             });
             describe("an unknown vehicle id is provided", () => {
                 beforeEach(() => {
                     fetchSuccessStub.returns(Promise.resolve(testData));
+                    vehicleDb.getVehicleByTripId.returns(undefined);
                 });
                 it("should throw an NotFoundError", () =>
-                    instance.getVehicleByTripId("any id")
+                    instance.getVehicleByTripId("any id" as VehicleId)
                         .then(() => {
                             throw new Error("should not be called");
                         }, (err: any | NotFoundError) => {
                             expect(err).to.instanceOf(NotFoundError);
                             expect(err.statusCode).to.equal(404);
+                            expect(vehicleDb.getVehicleByTripId.callCount).to.equal(1);
+                            expect(vehicleDb.getVehicleByTripId.getCall(0).args).to.deep.equal(["any id"]);
                         }));
             });
             describe("an known vehicle id is provided", () => {
+                const testVehicle: any = {
+                    id: "test_id",
+                    lastUpdate: 9823,
+                };
                 beforeEach(() => {
                     fetchSuccessStub.returns(Promise.resolve(testData));
+                    vehicleDb.getVehicleByTripId.returns(testVehicle);
                 });
                 it("should return the id", () =>
-                    instance.getVehicleByTripId("testId")
-                        .then((vehicle: IVehicleLocationResponse) => {
-                            expect(vehicle).to.deep.equal({
-                                lastUpdate: testData.lastUpdate,
-                                vehicle: testData.tripStorage.get("testId"),
-                            });
+                    instance.getVehicleByTripId("testId" as VehicleId)
+                        .then((vehicle: IVehicleLocationExtended) => {
+                            expect(vehicle).to.deep.equal(testVehicle);
+                            expect(vehicleDb.getVehicleByTripId.callCount).to.equal(1);
+                            expect(vehicleDb.getVehicleByTripId.getCall(0).args).to.deep.equal(["testId"]);
                         }));
             });
         });
         describe("getVehicles(left, right, top, bottom)", () => {
             let fetchSuccessStub: sinon.SinonStub;
             const testError: Error = new Error("Test Error");
-            const testVehicles: any[] = [1, 2, 3, 4]
-                .reduce((acc: Array<[number, number]>, x) => acc.concat([[x, 1], [x, 2], [x, 3], [x, 4]]), [])
-                .map((value: [number, number]) =>
-                    ({
-                        id: "" + value[0] + value[1],
-                        latitude: value[0],
-                        longitude: value[1],
-                    }))
-                .map((value) =>
-                    [value.id, value]);
             const testData: ISuccessStatus = {
                 lastUpdate: 235236,
                 status: Status.SUCCESS,
-                storage: new Map(testVehicles),
                 timestamp: 993,
-                tripStorage: new Map(),
             };
             beforeEach(() => {
                 fetchSuccessStub = sandbox.stub(instance, "fetchSuccessOrThrow");
@@ -219,6 +190,7 @@ describe("vehicle-storage.ts", () => {
                             throw new Error("should not be called");
                         }, (err: any) => {
                             expect(err).to.deep.equal(testError);
+                            expect(vehicleDb.getVehiclesIn.callCount).to.equal(0);
                         }));
             });
             describe("invalid parameter are provided", () => {
@@ -229,6 +201,7 @@ describe("vehicle-storage.ts", () => {
                         }, (err: any) => {
                             expect(err).to.be.instanceOf(Error);
                             expect(err.message).to.equal("left must be smaller than right");
+                            expect(vehicleDb.getVehiclesIn.callCount).to.equal(0);
                         }));
                 it("should reject if bottom is not smaller than top", () =>
                     instance.getVehicles(1, 2, 2, 2)
@@ -237,48 +210,37 @@ describe("vehicle-storage.ts", () => {
                         }, (err: any) => {
                             expect(err).to.be.instanceOf(Error);
                             expect(err.message).to.equal("top must be greater than bottom");
+                            expect(vehicleDb.getVehiclesIn.callCount).to.equal(0);
                         }));
             });
             describe("vehicles bounds are provided", () => {
+                const testResponse: any = {
+                    data: "response",
+                    data2: 2,
+                };
                 beforeEach(() => {
                     fetchSuccessStub.returns(Promise.resolve(testData));
+                    vehicleDb.getVehiclesIn.returns(testResponse);
                 });
-                it("should return no vehicle as no vehicle is inside bounds", () =>
+                it("should pass on arguments correctly", () =>
                     instance.getVehicles(20, 22, 2, 1)
                         .then((vehicle: IVehicleLocationList) => {
                             expect(vehicle).to.deep.equal({
                                 lastUpdate: testData.lastUpdate,
-                                vehicles: [],
+                                vehicles: testResponse,
                             });
+                            expect(vehicleDb.getVehiclesIn.callCount).to.equal(1);
+                            expect(vehicleDb.getVehiclesIn.getCall(0).args).to.deep.equal([20, 22, 2, 1, 0]);
                         }));
-                it("should return few vehicles", () =>
-                    instance.getVehicles(1, 2, 2, 1)
+                it("should pass on optional arguments correctly", () =>
+                    instance.getVehicles(20, 22, 2, 1, 10)
                         .then((vehicle: IVehicleLocationList) => {
                             expect(vehicle).to.deep.equal({
                                 lastUpdate: testData.lastUpdate,
-                                vehicles: [
-                                    {
-                                        id: "11",
-                                        latitude: 1,
-                                        longitude: 1,
-                                    },
-                                    {
-                                        id: "12",
-                                        latitude: 1,
-                                        longitude: 2,
-                                    },
-                                    {
-                                        id: "21",
-                                        latitude: 2,
-                                        longitude: 1,
-                                    },
-                                    {
-                                        id: "22",
-                                        latitude: 2,
-                                        longitude: 2,
-                                    },
-                                ],
+                                vehicles: testResponse,
                             });
+                            expect(vehicleDb.getVehiclesIn.callCount).to.equal(1);
+                            expect(vehicleDb.getVehiclesIn.getCall(0).args).to.deep.equal([20, 22, 2, 1, 10]);
                         }));
             });
         });
@@ -371,6 +333,7 @@ describe("vehicle-storage.ts", () => {
                         .then((value: LoadStatus) => {
                             expect(value).to.deep.equal(statusPrimer);
                             expect(getVehicleLocationsStub.callCount).to.equal(0);
+                            expect(vehicleDb.addResponse.callCount).to.equal(0);
                         }));
             });
             describe("file is locked", () => {
@@ -388,10 +351,10 @@ describe("vehicle-storage.ts", () => {
                             expect(lockPromiseStub.callCount).to.equal(1);
                             expect(getVehicleLocationsStub.callCount).to.equal(0);
                             expect(value).to.deep.equal(statusPrimer);
+                            expect(vehicleDb.addResponse.callCount).to.equal(0);
                         }));
             });
             describe("refresh of data is required", () => {
-                let convertResponseStub: sinon.SinonStub;
                 let lockedSetterSpy: sinon.SinonSpy;
                 const testError = new Error("test error");
                 before(() => {
@@ -401,12 +364,11 @@ describe("vehicle-storage.ts", () => {
                     updateStub.returns(true);
                     lockedStub.get(() => false);
                     lockedStub.set(lockedSetterSpy);
-                    convertResponseStub = sandbox.stub(instance, "convertResponse");
-                    convertResponseStub.returnsArg(0);
                 });
                 describe("getVehicleLocation resolves", () => {
                     const testResponse: any = {
                         data: "any",
+                        lastUpdate: 9582,
                         test: true,
                     };
                     beforeEach(() => {
@@ -415,22 +377,47 @@ describe("vehicle-storage.ts", () => {
                     it("should resolve after file is unlocked", () =>
                         instance.fetch()
                             .then((value: LoadStatus) => {
-                                expect(convertResponseStub.callCount).to.equal(1);
-                                expect(convertResponseStub.getCall(0).args).to.deep.equal([testResponse]);
+                                expect(vehicleDb.addResponse.callCount).to.equal(1);
+                                expect(vehicleDb.addResponse.getCall(0).args).to.deep.equal([testResponse]);
                                 expect(getVehicleLocationsStub.callCount).to.equal(1);
-                                expect(value).to.deep.equal(testResponse);
+                                expect(value).to.deep.equal({
+                                    lastUpdate: 9582,
+                                    status: Status.SUCCESS,
+                                    timestamp: clockNowTimestamp,
+                                });
                                 expect(lockedSetterSpy.callCount).to.equal(2);
                                 expect(lockedSetterSpy.args).to.deep.equal([[true], [false]]);
                             }));
-                    it("should report error thrown inside convertResponse", () => {
-                        convertResponseStub.throws(testError);
+                    it("should report error thrown inside response conversion", () => {
+                        vehicleDb.addResponse.throws(testError);
                         return instance.fetch()
                             .then((value: LoadStatus) => {
-                                expect(convertResponseStub.callCount).to.equal(1);
-                                expect(convertResponseStub.getCall(0).args).to.deep.equal([testResponse]);
+                                expect(vehicleDb.addResponse.callCount).to.equal(1);
+                                expect(vehicleDb.addResponse.getCall(0).args).to.deep.equal([testResponse]);
                                 expect(getVehicleLocationsStub.callCount).to.equal(1);
                                 expect(value).to.deep.equal({
                                     error: testError,
+                                    lastUpdate: 0,
+                                    status: Status.ERROR,
+                                    timestamp: clockNowTimestamp,
+                                });
+                                expect(lockedSetterSpy.callCount).to.equal(2);
+                                expect(lockedSetterSpy.args).to.deep.equal([[true], [false]]);
+                            });
+                    });
+                    it("should report error thrown inside response conversion with prior timestamp", () => {
+                        vehicleDb.addResponse.throws(testError);
+                        (instance as any).mStatus = {
+                            lastUpdate: 5432,
+                        };
+                        return instance.fetch()
+                            .then((value: LoadStatus) => {
+                                expect(vehicleDb.addResponse.callCount).to.equal(1);
+                                expect(vehicleDb.addResponse.getCall(0).args).to.deep.equal([testResponse]);
+                                expect(getVehicleLocationsStub.callCount).to.equal(1);
+                                expect(value).to.deep.equal({
+                                    error: testError,
+                                    lastUpdate: 5432,
                                     status: Status.ERROR,
                                     timestamp: clockNowTimestamp,
                                 });
@@ -446,16 +433,35 @@ describe("vehicle-storage.ts", () => {
                     it("should resolve after file is unlocked", () =>
                         instance.fetch()
                             .then((value: LoadStatus) => {
-                                expect(convertResponseStub.callCount).to.equal(0);
+                                expect(vehicleDb.addResponse.callCount).to.equal(0);
                                 expect(getVehicleLocationsStub.callCount).to.equal(1);
                                 expect(value).to.deep.equal({
                                     error: testError,
+                                    lastUpdate: 0,
                                     status: Status.ERROR,
                                     timestamp: clockNowTimestamp,
                                 });
                                 expect(lockedSetterSpy.callCount).to.equal(2);
                                 expect(lockedSetterSpy.args).to.deep.equal([[true], [false]]);
                             }));
+                    it("should resolve after file is unlocked with old lastUpdate", () => {
+                        (instance as any).mStatus = {
+                            lastUpdate: 4857,
+                        };
+                        return instance.fetch()
+                            .then((value: LoadStatus) => {
+                                expect(vehicleDb.addResponse.callCount).to.equal(0);
+                                expect(getVehicleLocationsStub.callCount).to.equal(1);
+                                expect(value).to.deep.equal({
+                                    error: testError,
+                                    lastUpdate: 4857,
+                                    status: Status.ERROR,
+                                    timestamp: clockNowTimestamp,
+                                });
+                                expect(lockedSetterSpy.callCount).to.equal(2);
+                                expect(lockedSetterSpy.args).to.deep.equal([[true], [false]]);
+                            });
+                    });
                 });
             });
         });
