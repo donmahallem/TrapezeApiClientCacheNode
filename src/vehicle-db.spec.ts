@@ -167,10 +167,35 @@ describe("vehicle-db.ts", () => {
                             return value.lastUpdate + 1 >= clockNowTimestamp;
                         }));
                     });
-                    it("should only drop timed out elements if provided empty array and not populated before", () => {
+                    it("shouldn't do anything if provided empty array and not populated before", () => {
                         expect(getVehicles(instance)).to.have.lengthOf(0, "should contain vehicles before test");
                         instance.addAll([]);
                         expect(getVehicles(instance)).to.have.lengthOf(0);
+                    });
+                    it("should update items if provided non empty array and populated before", () => {
+                        setVehicles(instance, testVehicles);
+                        expect(getVehicles(instance)).to.have.lengthOf(testVehicles.length, "should contain vehicles before test");
+                        instance.addAll([{
+                            id: "id32",
+                            lastUpdate: clockNowTimestamp + 50,
+                        }] as any[]);
+                        expect(getVehicles(instance)).to.have.lengthOf(ttl > 0 ? 17 : 25);
+                        const expectedVehicles: any[] = testVehicles.filter((value: any) => {
+                            if (ttl === 0) {
+                                return true;
+                            }
+                            return value.lastUpdate + 1 >= clockNowTimestamp;
+                        }).map((value) => {
+                            if (value.id === "id32") {
+                                return {
+                                    id: "id32",
+                                    lastUpdate: 123506,
+                                };
+                            } else {
+                                return value;
+                            }
+                        });
+                        expect(getVehicles(instance)).to.deep.equal(expectedVehicles);
                     });
                 });
             });
