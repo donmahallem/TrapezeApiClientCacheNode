@@ -6,7 +6,6 @@ import {
     PositionType,
     TrapezeApiClient,
 } from "@donmahallem/trapeze-api-client";
-import { IVehicleLocationExtended } from "@donmahallem/trapeze-api-client-types";
 import {
     IVehicleLocation,
     IVehicleLocationList,
@@ -15,6 +14,7 @@ import {
 } from "@donmahallem/trapeze-api-types";
 import { LockHandler } from "./lock-handler";
 import { NotFoundError } from "./not-found-error";
+import { TimestampedVehiclelocation } from "./timestamped-location";
 import { VehicleDb } from "./vehicle-db";
 
 export enum Status {
@@ -108,10 +108,10 @@ export class VehicleStorage {
     /**
      * Gets the vehicle or rejects with undefined if not known
      */
-    public getVehicleByTripId(id: TripId): Promise<IVehicleLocationExtended> {
+    public getVehicleByTripId(id: TripId): Promise<TimestampedVehiclelocation> {
         return this.fetchSuccessOrThrow()
-            .then((status: ISuccessStatus): IVehicleLocationExtended => {
-                const loc: IVehicleLocationExtended | undefined = this.mDb.getVehicleByTripId(id);
+            .then((status: ISuccessStatus): TimestampedVehiclelocation => {
+                const loc: TimestampedVehiclelocation | undefined = this.mDb.getVehicleByTripId(id);
                 if (loc) {
                     return loc;
                 }
@@ -138,10 +138,10 @@ export class VehicleStorage {
     /**
      * Gets the vehicle or rejects with undefined if not known
      */
-    public getVehicle(id: VehicleId): Promise<IVehicleLocationExtended> {
+    public getVehicle(id: VehicleId): Promise<TimestampedVehiclelocation> {
         return this.fetchSuccessOrThrow()
-            .then((status: ISuccessStatus): IVehicleLocationExtended => {
-                const location: IVehicleLocationExtended | undefined = this.mDb
+            .then((status: ISuccessStatus): TimestampedVehiclelocation => {
+                const location: TimestampedVehiclelocation | undefined = this.mDb
                     .getVehicleById(id);
                 if (location) {
                     return location;
@@ -171,7 +171,7 @@ export class VehicleStorage {
         }
         return this.fetchSuccessOrThrow()
             .then((status: ISuccessStatus): IVehicleLocationList => {
-                const vehicles: IVehicleLocationExtended[] = this.mDb
+                const vehicles: TimestampedVehiclelocation[] = this.mDb
                     .getVehiclesIn(left, right, top, bottom, lastUpdate);
                 return {
                     lastUpdate: status.lastUpdate,
