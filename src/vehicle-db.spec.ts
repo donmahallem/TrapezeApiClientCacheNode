@@ -197,6 +197,55 @@ describe("vehicle-db.ts", () => {
                         });
                         expect(getVehicles(instance)).to.deep.equal(expectedVehicles);
                     });
+                    it("should update no items if old items are provided", () => {
+                        setVehicles(instance, testVehicles);
+                        expect(getVehicles(instance)).to.have.lengthOf(testVehicles.length, "should contain vehicles before test");
+                        instance.addAll(testVehicles
+                            .map((value: any) => {
+                                const a = Object.assign({}, value);
+                                a.lastUpdate = a.lastUpdate - 200;
+                                return a;
+                            }) as any);
+                        expect(getVehicles(instance)).to.have.lengthOf(ttl > 0 ? 17 : 25);
+                        const expectedVehicles: any[] = testVehicles.filter((value: any) => {
+                            if (ttl === 0) {
+                                return true;
+                            }
+                            return value.lastUpdate + 1 >= clockNowTimestamp;
+                        });
+                        expect(getVehicles(instance)).to.deep.equal(expectedVehicles);
+                    });
+                    it("should remove deleted entries if they are newer", () => {
+                        setVehicles(instance, testVehicles);
+                        expect(getVehicles(instance)).to.have.lengthOf(testVehicles.length, "should contain vehicles before test");
+                        instance.addAll([{
+                            id: "id44",
+                            isDeleted: true,
+                            lastUpdate: clockNowTimestamp - 1000,
+                        }, {
+                            id: "id34",
+                            isDeleted: true,
+                            lastUpdate: clockNowTimestamp + 1000,
+                        }] as any[]);
+                        expect(getVehicles(instance)).to.have.lengthOf(ttl > 0 ? 16 : 24);
+                        const expectedVehicles: any[] = testVehicles.filter((value: any) => {
+                            if (value.id === "id34") {
+                                return false;
+                            }
+                            if (ttl === 0) {
+                                return true;
+                            }
+                            return value.lastUpdate + 1 >= clockNowTimestamp;
+                        }).map((value) => {
+                            if (value.id === "id34") {
+                                const mapped = Object.assign({}, value);
+                                mapped.lastUpdate = clockNowTimestamp + 1000;
+                                return mapped;
+                            }
+                            return value;
+                        });
+                        expect(getVehicles(instance)).to.deep.equal(expectedVehicles);
+                    });
                 });
             });
         });
@@ -260,13 +309,22 @@ describe("vehicle-db.ts", () => {
                         longitude: 4,
                         tripId: "tripId3",
                     } as any,
+                    {
+                        id: "testId4",
+                        isDeleted: true,
+                    },
                 ],
             };
             it("should parse the items correctly", () => {
                 const result: any[] = instance.convertResponse(testData);
-                expect(result.length).to.equal(2);
+                expect(result.length).to.equal(4);
                 expect(result.every((value) => value.lastUpdate === 235236)).to.equal(true);
                 expect(result).to.deep.equal([{
+                    id: "testId1",
+                    isDeleted: true,
+                    lastUpdate: 235236,
+                }, {
+                    id: "testId2",
                     isDeleted: true,
                     lastUpdate: 235236,
                 }, {
@@ -275,6 +333,10 @@ describe("vehicle-db.ts", () => {
                     latitude: 3,
                     longitude: 4,
                     tripId: "tripId3",
+                }, {
+                    id: "testId4",
+                    isDeleted: true,
+                    lastUpdate: 235236,
                 }]);
             });
             it("should return empty array for an undefined parameter", () => {

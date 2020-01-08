@@ -3,3 +3,4 @@
  */
 
 export * from "./vehicle-storage";
+export { TimestampedVehiclelocation } from "./timestamped-location";

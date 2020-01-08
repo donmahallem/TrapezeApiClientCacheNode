@@ -2,17 +2,20 @@
  * Source https://github.com/donmahallem/TrapezeApiClientNode
  */
 
-import { IVehicleLocationExtended } from "@donmahallem/trapeze-api-client-types";
 import {
     IVehicleLocation,
     IVehicleLocationList,
     TripId,
     VehicleId,
 } from "@donmahallem/trapeze-api-types";
+import {
+    TimestampedVehiclelocation,
+    TimestampedVehiclelocations,
+} from "./timestamped-location";
 
-type VehicleIdMap = Map<VehicleId, IVehicleLocationExtended>;
+type VehicleIdMap = Map<VehicleId, TimestampedVehiclelocation>;
 export class VehicleDb {
-    private mVehicles: IVehicleLocationExtended[] = [];
+    private mVehicles: TimestampedVehiclelocation[] = [];
     private mLastUpdate: number = 0;
     public constructor(public ttl: number = 0) {
 
@@ -25,7 +28,7 @@ export class VehicleDb {
      * @param vehicleResponse
      * @since 3.0.0
      */
-    public convertResponse(vehicleResponse: IVehicleLocationList): IVehicleLocationExtended[] {
+    public convertResponse(vehicleResponse: IVehicleLocationList): TimestampedVehiclelocations[] {
         if (vehicleResponse && vehicleResponse.vehicles) {
             return vehicleResponse
                 .vehicles
@@ -33,18 +36,20 @@ export class VehicleDb {
                     if (value === null || value === undefined) {
                         return false;
                     }
-                    if (value.isDeleted === true) {
-                        return true;
-                    }
-                    if (value.latitude === undefined || value.longitude === undefined) {
-                        return false;
-                    }
-                    return true;
+                    return value.id ? true : false;
                 })
-                .map((value: IVehicleLocation): IVehicleLocationExtended =>
-                    Object.assign({
+                .map((value: IVehicleLocation): TimestampedVehiclelocations => {
+                    if ("latitude" in value !== "longitude" in value) {
+                        return {
+                            id: value.id,
+                            isDeleted: true,
+                            lastUpdate: vehicleResponse.lastUpdate,
+                        };
+                    }
+                    return Object.assign({
                         lastUpdate: vehicleResponse.lastUpdate,
-                    }, value));
+                    }, value);
+                });
         }
         return [];
     }
@@ -61,23 +66,28 @@ export class VehicleDb {
      * @param locations
      * @since 3.0.0
      */
-    public addAll(locations: IVehicleLocationExtended[]): void {
-        const dataMap: VehicleIdMap = this.mVehicles.concat(locations)
-            .reduce<VehicleIdMap>((prev: VehicleIdMap, cur: IVehicleLocationExtended): VehicleIdMap => {
+    public addAll(locations: TimestampedVehiclelocations[]): void {
+        const dataMap: VehicleIdMap = (this.mVehicles as TimestampedVehiclelocations[]).concat(locations)
+            .reduce<VehicleIdMap>((prev: VehicleIdMap, cur: TimestampedVehiclelocation): VehicleIdMap => {
                 if (prev.has(cur.id)) {
-                    const curEntry: IVehicleLocationExtended | undefined = prev.get(cur.id);
+                    const curEntry: TimestampedVehiclelocation | undefined = prev.get(cur.id);
                     if (curEntry && curEntry.lastUpdate >= cur.lastUpdate) {
                         return prev;
+                    } else if (cur.isDeleted === true) {
+                        prev.delete(cur.id);
+                        return prev;
                     }
+                } else if (cur.isDeleted === true) {
+                    return prev;
                 }
                 if (this.ttl <= 0 || cur.lastUpdate + this.ttl >= Date.now()) {
                     prev.set(cur.id, cur);
                 }
                 return prev;
-            }, new Map<VehicleId, IVehicleLocationExtended>());
+            }, new Map<VehicleId, TimestampedVehiclelocation>());
         this.mVehicles = Array.from(dataMap.values());
         this.mLastUpdate = this.mVehicles
-            .reduce((prev: number, cur: IVehicleLocationExtended): number =>
+            .reduce((prev: number, cur: TimestampedVehiclelocation): number =>
                 Math.max(prev, cur.lastUpdate), 0);
 
     }
@@ -87,8 +97,8 @@ export class VehicleDb {
      * @param id
      * @since 3.0.0
      */
-    public getVehicleById(id: VehicleId): IVehicleLocationExtended | undefined {
-        const idx: number = this.mVehicles.findIndex((value: IVehicleLocationExtended): boolean =>
+    public getVehicleById(id: VehicleId): TimestampedVehiclelocation | undefined {
+        const idx: number = this.mVehicles.findIndex((value: TimestampedVehiclelocation): boolean =>
             value.id === id);
         return idx < 0 ? undefined : this.mVehicles[idx];
     }
@@ -97,10 +107,10 @@ export class VehicleDb {
      * @param id
      * @since 3.0.0
      */
-    public getVehicleByTripId(id: TripId): IVehicleLocationExtended | undefined {
-        const idx: number = this.mVehicles.findIndex((value: IVehicleLocationExtended): boolean =>
-            value.tripId === id);
-        return idx < 0 ? undefined : this.mVehicles[idx];
+    public getVehicleByTripId(id: TripId): TimestampedVehiclelocation | undefined {
+        const idx: number = this.mVehicles.findIndex((value: TimestampedVehiclelocation): boolean =>
+            (value.tripId === id));
+        return idx < 0 ? undefined : this.mVehicles[idx] as TimestampedVehiclelocation;
     }
 
     /**
@@ -108,9 +118,9 @@ export class VehicleDb {
      * @param since
      * @since 3.0.0
      */
-    public getVehicles(since: number = 0): IVehicleLocationExtended[] {
+    public getVehicles(since: number = 0): TimestampedVehiclelocation[] {
         return this.mVehicles
-            .filter((vehicle: IVehicleLocationExtended): boolean =>
+            .filter((vehicle: TimestampedVehiclelocation): boolean =>
                 vehicle.lastUpdate >= since);
     }
     /**
@@ -126,7 +136,7 @@ export class VehicleDb {
                          right: number,
                          top: number,
                          bottom: number,
-                         since: number = 0): IVehicleLocationExtended[] {
+                         since: number = 0): TimestampedVehiclelocation[] {
         if (left >= right) {
             throw new Error("left must be smaller than right");
         }
@@ -134,7 +144,7 @@ export class VehicleDb {
             throw new Error("top must be greater than bottom");
         }
         return this.mVehicles
-            .filter((vehicle: IVehicleLocationExtended): boolean => {
+            .filter((vehicle: TimestampedVehiclelocation): boolean => {
                 if (vehicle.longitude < left || vehicle.longitude > right) {
                     return false;
                 }
