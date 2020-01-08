@@ -2,7 +2,6 @@
  * Source https://github.com/donmahallem/TrapezeApiClientNode
  */
 
-import { IVehicleLocationExtended } from "@donmahallem/trapeze-api-client-types";
 import {
     IVehicleLocationList,
     TripId,
@@ -11,14 +10,15 @@ import {
 import { expect } from "chai";
 import "mocha";
 import * as sinon from "sinon";
+import { TimestampedVehiclelocation } from "./timestamped-location";
 import { VehicleDb } from "./vehicle-db";
-type PartialLocation = Partial<IVehicleLocationExtended>;
+type PartialLocation = Partial<TimestampedVehiclelocation>;
 /**
  * Helper method
  * @param ins
  * @param vehicles
  */
-const setVehicles: (ins: VehicleDb, vehicles: Array<Partial<IVehicleLocationExtended>>) => void =
+const setVehicles: (ins: VehicleDb, vehicles: Array<Partial<TimestampedVehiclelocation>>) => void =
     (ins: VehicleDb, vehicles: any[]): void => {
         (ins as any).mVehicles = vehicles;
     };
