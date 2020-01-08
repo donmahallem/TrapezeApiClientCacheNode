@@ -3,7 +3,6 @@
  */
 
 import { TrapezeApiClient } from "@donmahallem/trapeze-api-client";
-import { IVehicleLocationExtended } from "@donmahallem/trapeze-api-client-types";
 import {
     IVehicleLocationList,
     VehicleId,
@@ -12,6 +11,7 @@ import { expect } from "chai";
 import "mocha";
 import * as sinon from "sinon";
 import { NotFoundError } from "./not-found-error";
+import { TimestampedVehiclelocation } from "./timestamped-location";
 import { VehicleDb } from "./vehicle-db";
 import {
     ISuccessStatus,
@@ -104,7 +104,7 @@ describe("vehicle-storage.ts", () => {
                 });
                 it("should return the id", () =>
                     instance.getVehicle("testId" as VehicleId)
-                        .then((vehicle: IVehicleLocationExtended) => {
+                        .then((vehicle: TimestampedVehiclelocation) => {
                             expect(vehicle).to.deep.equal(testVehicle);
                             expect(vehicleDb.getVehicleById.callCount).to.equal(1);
                             expect(vehicleDb.getVehicleById.getCall(0).args).to.deep.equal(["testId"]);
@@ -162,7 +162,7 @@ describe("vehicle-storage.ts", () => {
                 });
                 it("should return the id", () =>
                     instance.getVehicleByTripId("testId" as VehicleId)
-                        .then((vehicle: IVehicleLocationExtended) => {
+                        .then((vehicle: TimestampedVehiclelocation) => {
                             expect(vehicle).to.deep.equal(testVehicle);
                             expect(vehicleDb.getVehicleByTripId.callCount).to.equal(1);
                             expect(vehicleDb.getVehicleByTripId.getCall(0).args).to.deep.equal(["testId"]);
