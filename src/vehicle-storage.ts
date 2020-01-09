@@ -180,4 +180,20 @@ export class VehicleStorage {
             });
     }
 
+    /**
+     * @since 1.1.0
+     * @param since
+     */
+    public getAllVehicles(lastUpdate: number = 0): Promise<IVehicleLocationList> {
+        return this.fetchSuccessOrThrow()
+            .then((status: ISuccessStatus): IVehicleLocationList => {
+                const vehicles: TimestampedVehiclelocation[] = this.mDb
+                    .getVehicles(lastUpdate);
+                return {
+                    lastUpdate: status.lastUpdate,
+                    vehicles,
+                };
+            });
+    }
+
 }

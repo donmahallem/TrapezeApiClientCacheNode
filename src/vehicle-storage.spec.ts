@@ -254,6 +254,57 @@ describe("vehicle-storage.ts", () => {
                 });
             });
         });
+        describe("getAllVehicles(since?)", () => {
+            let fetchSuccessStub: sinon.SinonStub;
+            const testError: Error = new Error("Test Error");
+            const testData: ISuccessStatus = {
+                lastUpdate: 235236,
+                status: Status.SUCCESS,
+                timestamp: 993,
+            };
+            beforeEach(() => {
+                fetchSuccessStub = sandbox.stub(instance, "fetchSuccessOrThrow");
+            });
+            describe("fetch throws an error", () => {
+                beforeEach(() => {
+                    fetchSuccessStub.rejects(testError);
+                });
+                it("should pass the error on", () =>
+                    instance.getAllVehicles()
+                        .then(() => {
+                            throw new Error("should not be called");
+                        }, (err: any) => {
+                            expect(err).to.deep.equal(testError);
+                            expect(vehicleDb.getVehicles.callCount).to.equal(0);
+                        }));
+            });
+            describe("fetch returns success", () => {
+                beforeEach(() => {
+                    fetchSuccessStub.resolves(testData);
+                    vehicleDb.getVehicles.returns([1, 2, 3] as any);
+                });
+                it("should call correctly with default", () =>
+                    instance.getAllVehicles().
+                        then((value) => {
+                            expect(value).to.deep.equal({
+                                lastUpdate: 235236,
+                                vehicles: [1, 2, 3],
+                            });
+                            expect(vehicleDb.getVehicles.getCall(0).args).to.deep.equal([0]);
+                            expect(vehicleDb.getVehicles.callCount).to.equal(1);
+                        }));
+                it("should call correctly with non default", () =>
+                    instance.getAllVehicles(1234).
+                        then((value) => {
+                            expect(value).to.deep.equal({
+                                lastUpdate: 235236,
+                                vehicles: [1, 2, 3],
+                            });
+                            expect(vehicleDb.getVehicles.callCount).to.equal(1);
+                            expect(vehicleDb.getVehicles.getCall(0).args).to.deep.equal([1234]);
+                        }));
+            });
+        });
         describe("updateRequired()", () => {
             const testValues: Array<{ status: any, result: boolean, updateDelay: number }> = [
                 {
