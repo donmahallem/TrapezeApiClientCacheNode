@@ -1,0 +1,111 @@
+{
+    "name": "@donmahallem/trapeze-api-client-cache",
+    "version": "1.0.0",
+    "description": "",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "private": false,
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "test": "mocha",
+        "start": "npm run build:live",
+        "build:live": "nodemon",
+        "build": "tsc",
+        "test-ci": "nyc npm run test",
+        "lint": "tslint -c tslint.json -p tsconfig-lint.json src/**/*.ts",
+        "lint-fix": "tslint --fix -c tslint.json -p tsconfig-lint.json src/**/*.ts",
+        "docs": "typedoc --options typedoc.json",
+        "test:lint": "npm run lint",
+        "test:build": "npm run build",
+        "test:unit": "npm run test-ci",
+        "test:docs": "npm run docs",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@donmahallem/trapeze-api-client": "~3.0.1"
+    },
+    "devDependencies": {
+        "@types/chai": "~4.2.7",
+        "@types/mocha": "~5.2.7",
+        "@types/node": "~13.1.5",
+        "@types/request": "~2.48.4",
+        "@types/request-promise-native": "~1.0.17",
+        "@types/sinon": "~7.5.1",
+        "chai": "~4.2.0",
+        "mocha": "~7.0.0",
+        "nodemon": "~2.0.2",
+        "nyc": "~15.0.0",
+        "sinon": "~8.0.4",
+        "ts-node": "~8.5.4",
+        "tslint": "~5.20.1",
+        "typedoc": "~0.15.6",
+        "typescript": "~3.7.4"
+    },
+    "peerDependencies": {
+        "@donmahallem/trapeze-api-types": ">=1.2.0 <3.0.0"
+    },
+    "nyc": {
+        "include": [
+            "src/*.ts",
+            "src/**/*.ts"
+        ],
+        "exclude": [
+            "typings",
+            "src/**/*.spec.ts",
+            "**/*.d.ts"
+        ],
+        "extension": [
+            ".ts"
+        ],
+        "require": [
+            "ts-node/register"
+        ],
+        "reporter": [
+            "json",
+            "html",
+            "text-summary",
+            "lcov"
+        ],
+        "sourceMap": true,
+        "instrument": true,
+        "all": true
+    },
+    "files": [
+        "dist/*",
+        "src/*"
+    ],
+    "homepage": "https://donmahallem.github.io/TrapezeApiClientNode/",
+    "author": {
+        "name": "donmahallem",
+        "email": "donmahallem@users.noreply.github.com",
+        "url": "https://github.com/donmahallem"
+    },
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/donmahallem/TrapezeApiClientNode/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/donmahallem/TrapezeApiClientNode.git"
+    },
+    "engines": {
+        "node": ">=8.0.0"
+    },
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "lib": [
+            "es2017",
+            "es7",
+            "es6",
+            "dom"
+        ],
+        "declaration": true,
+        "outDir": "./dist/",
+        "baseUrl": "./src/",
+        "strict": true,
+        "esModuleInterop": true
+    }
+}
