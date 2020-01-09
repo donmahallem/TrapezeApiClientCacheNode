@@ -1,6 +1,6 @@
 {
     "name": "@donmahallem/trapeze-api-client-cache",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -76,7 +76,7 @@
         "dist/*",
         "src/*"
     ],
-    "homepage": "https://donmahallem.github.io/TrapezeApiClientNode/",
+    "homepage": "https://donmahallem.github.io/TrapezeApiClientCacheNode/",
     "author": {
         "name": "donmahallem",
         "email": "donmahallem@users.noreply.github.com",
@@ -84,11 +84,11 @@
     },
     "license": "Apache-2.0",
     "bugs": {
-        "url": "https://github.com/donmahallem/TrapezeApiClientNode/issues"
+        "url": "https://github.com/donmahallem/TrapezeApiClientCacheNode/issues"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/donmahallem/TrapezeApiClientNode.git"
+        "url": "https://github.com/donmahallem/TrapezeApiClientCacheNode.git"
     },
     "engines": {
         "node": ">=8.0.0"
